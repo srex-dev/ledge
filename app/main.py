@@ -5,9 +5,11 @@ import os
 import time
 from collections import Counter
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
 
 from app.api.schemas import (
     AuthorizationRequest,
@@ -110,6 +112,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
 
     app = FastAPI(title="OpenCoreOS Ledger Prototype", version="0.1.0")
     app.state.services = services
+    ui_file = Path(__file__).resolve().parent / "static" / "index.html"
 
     @app.middleware("http")
     async def add_request_trace(request: Request, call_next):
@@ -263,6 +266,14 @@ def create_app(db_path: str | None = None) -> FastAPI:
             },
         }
 
+    @app.get("/internal/events")
+    def events(limit: int = 30) -> dict:
+        bounded_limit = max(1, min(200, limit))
+        with services.repository.transaction() as tx:
+            rows = tx.list_events()
+        recent = rows[-bounded_limit:]
+        return {"events": recent, "count": len(recent)}
+
     @app.get("/internal/replay/verify")
     def replay_verify() -> dict:
         with services.repository.transaction() as tx:
@@ -294,6 +305,14 @@ def create_app(db_path: str | None = None) -> FastAPI:
                 },
             )
             return result
+
+    @app.get("/ui")
+    def ui() -> FileResponse:
+        return FileResponse(ui_file)
+
+    @app.get("/")
+    def root() -> FileResponse:
+        return FileResponse(ui_file)
 
     return app
 

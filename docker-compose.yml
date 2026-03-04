@@ -1,0 +1,15 @@
+services:
+  ledge:
+    build: .
+    container_name: ledge-app
+    ports:
+      - "8000:8000"
+    environment:
+      LEDGER_DB_PATH: /app/data/ledger.db
+      ENABLE_AI_RISK_CHECK: "0"
+      RISK_SCORER_MODE: heuristic
+    volumes:
+      - ledge_data:/app/data
+
+volumes:
+  ledge_data:

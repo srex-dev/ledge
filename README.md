@@ -152,6 +152,27 @@ Run tests:
 pytest
 ```
 
+## Docker
+
+Build and run with Docker:
+
+```bash
+docker build -t ledge .
+docker run --rm -p 8000:8000 -e LEDGER_DB_PATH=/app/data/ledger.db ledge
+```
+
+Run with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+App URL:
+
+```bash
+http://127.0.0.1:8000/
+```
+
 ## Test Coverage
 
 Tests are in `tests/` and include:

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ledger Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 980px; }
+    h1 { margin-bottom: 8px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+    button { padding: 8px 12px; cursor: pointer; }
+    .card { border: 1px solid #ccc; padding: 12px; margin: 10px 0; border-radius: 6px; }
+    .mono { font-family: Consolas, monospace; font-size: 13px; white-space: pre-wrap; }
+    .ok { color: #0a7a31; }
+    .err { color: #a10000; }
+  </style>
+</head>
+<body>
+  <h1>Ledger Flow Demo</h1>
+  <div>Simple view of <strong>Authorize -> Settle -> Release</strong>.</div>
+
+  <div class="card">
+    <div class="row">
+      <button id="authBtn">1) Authorize $50</button>
+      <button id="settleBtn" disabled>2) Settle $48</button>
+      <button id="releaseBtn" disabled>3) Release remainder</button>
+      <button id="refreshBtn">Refresh</button>
+    </div>
+    <div id="status" class="mono">Ready.</div>
+  </div>
+
+  <div class="card">
+    <h3>Balances (cents)</h3>
+    <div id="balances" class="mono">Loading...</div>
+  </div>
+
+  <div class="card">
+    <h3>Metrics</h3>
+    <div id="metrics" class="mono">Loading...</div>
+  </div>
+
+  <div class="card">
+    <h3>Recent Events</h3>
+    <div id="events" class="mono">Loading...</div>
+  </div>
+
+  <script>
+    const state = { authInstructionId: null };
+
+    function cents(v) { return Number(v).toLocaleString(); }
+    function requestId() { return "ui-" + Date.now() + "-" + Math.floor(Math.random() * 9999); }
+
+    async function api(path, options = {}) {
+      const headers = Object.assign({ "Content-Type": "application/json", "x-request-id": requestId() }, options.headers || {});
+      const res = await fetch(path, Object.assign({}, options, { headers }));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+      return data;
+    }
+
+    function setStatus(text, isError = false) {
+      const el = document.getElementById("status");
+      el.textContent = text;
+      el.className = "mono " + (isError ? "err" : "ok");
+    }
+
+    async function loadBalances() {
+      const ids = ["acct_customer_checking", "acct_customer_holds", "acct_merchant_clearing"];
+      const rows = [];
+      for (const id of ids) {
+        const data = await api(`/accounts/${id}/balances`);
+        rows.push(`${id}: ${cents(data.ledger_balance_cents)}`);
+      }
+      document.getElementById("balances").textContent = rows.join("\n");
+    }
+
+    async function loadMetrics() {
+      const data = await api("/internal/metrics");
+      document.getElementById("metrics").textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function loadEvents() {
+      const data = await api("/internal/events?limit=12");
+      const lines = data.events.map(e => `${e.created_at}  ${e.event_type}`);
+      document.getElementById("events").textContent = lines.join("\n");
+    }
+
+    async function refresh() {
+      await Promise.all([loadBalances(), loadMetrics(), loadEvents()]);
+    }
+
+    async function authorize() {
+      try {
+        const payload = {
+          idempotency_key: "ui-auth-" + Date.now(),
+          customer_id: "cust_demo",
+          checking_account_id: "acct_customer_checking",
+          hold_account_id: "acct_customer_holds",
+          amount_cents: 5000,
+          expires_in_days: 7
+        };
+        const data = await api("/instructions/authorization", { method: "POST", body: JSON.stringify(payload) });
+        state.authInstructionId = data.instruction_id;
+        document.getElementById("settleBtn").disabled = false;
+        setStatus(`Authorized $50. instruction_id=${state.authInstructionId}`);
+        await refresh();
+      } catch (err) {
+        setStatus("Authorize failed: " + err.message, true);
+      }
+    }
+
+    async function settle() {
+      try {
+        if (!state.authInstructionId) throw new Error("Authorize first.");
+        const payload = {
+          idempotency_key: "ui-settle-" + Date.now(),
+          authorization_instruction_id: state.authInstructionId,
+          merchant_account_id: "acct_merchant_clearing",
+          amount_cents: 4800
+        };
+        const data = await api("/instructions/settlement", { method: "POST", body: JSON.stringify(payload) });
+        document.getElementById("releaseBtn").disabled = false;
+        setStatus(`Settled $48. remaining=${data.hold_remaining_cents} cents`);
+        await refresh();
+      } catch (err) {
+        setStatus("Settle failed: " + err.message, true);
+      }
+    }
+
+    async function releaseHold() {
+      try {
+        if (!state.authInstructionId) throw new Error("Authorize first.");
+        const payload = {
+          idempotency_key: "ui-release-" + Date.now(),
+          authorization_instruction_id: state.authInstructionId
+        };
+        const data = await api("/instructions/hold-release", { method: "POST", body: JSON.stringify(payload) });
+        setStatus(`Released ${data.released_amount_cents} cents.`);
+        await refresh();
+      } catch (err) {
+        setStatus("Release failed: " + err.message, true);
+      }
+    }
+
+    document.getElementById("authBtn").addEventListener("click", authorize);
+    document.getElementById("settleBtn").addEventListener("click", settle);
+    document.getElementById("releaseBtn").addEventListener("click", releaseHold);
+    document.getElementById("refreshBtn").addEventListener("click", refresh);
+
+    refresh().catch(err => setStatus("Initial load failed: " + err.message, true));
+  </script>
+</body>
+</html>
