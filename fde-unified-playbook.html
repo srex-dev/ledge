@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FDE Integration Playbook</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f3ef;
+  --surface: #ffffff;
+  --surface2: #f0ede8;
+  --border: #ddd9d2;
+  --border2: #c8c3bb;
+  --ink: #1e1c18;
+  --ink2: #4a4640;
+  --muted: #8c867e;
+  --muted2: #a89f95;
+  --accent: #2a5c8a;
+  --green: #276348;
+  --amber: #8a5e1a;
+  --red: #8a2424;
+  --purple: #5c3a8a;
+  --display: 'Lora', serif;
+  --sans: 'Inter', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+.shell { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
+
+/* ── Header ── */
+.hdr { margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); }
+.hdr-eyebrow {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+}
+.hdr h1 {
+  font-family: var(--display); font-size: 22px; font-weight: 600;
+  color: var(--ink); line-height: 1.15; margin-bottom: 4px;
+}
+.hdr h1 em { color: var(--accent); font-style: italic; }
+.hdr-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+/* ── Universal bar ── */
+.universal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+}
+.universal-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--muted); margin-right: 2px; flex-shrink: 0;
+}
+.step-pill {
+  font-family: var(--mono); font-size: 9px; padding: 2px 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--ink2); cursor: default;
+}
+.step-pill span { color: var(--accent); font-weight: 500; }
+
+/* ── Layer cards ── */
+.layer {
+  border: 1px solid var(--border);
+  margin-bottom: 3px;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.layer.open { border-color: var(--border2); }
+
+.layer-trigger {
+  width: 100%; background: var(--surface); border: none;
+  cursor: pointer; padding: 0; display: flex; align-items: stretch;
+  text-align: left; transition: background .1s;
+}
+.layer-trigger:hover { background: var(--surface2); }
+.layer.open .layer-trigger { background: var(--surface2); }
+
+.layer-num {
+  display: flex; align-items: center; justify-content: center;
+  width: 38px; flex-shrink: 0;
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  color: var(--surface); border-right: 1px solid var(--border);
+  padding: 10px 0;
+}
+
+.layer-meta {
+  flex: 1; padding: 9px 14px; display: flex;
+  flex-direction: column; justify-content: center; gap: 1px;
+  border-right: 1px solid var(--border); min-width: 0;
+}
+.layer-name {
+  font-family: var(--display); font-size: 12px; font-weight: 600;
+  color: var(--ink);
+}
+.layer-purpose { font-size: 10px; color: var(--muted); font-family: var(--sans); }
+
+.layer-tech {
+  width: 240px; flex-shrink: 0; padding: 9px 14px;
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  border-right: 1px solid var(--border);
+}
+.tech-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.tt {
+  font-family: var(--mono); font-size: 9px; padding: 1px 5px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--muted);
+}
+.tt.hi { color: var(--accent); background: #eef3f9; border-color: #b8cedf; }
+.tt.g  { color: var(--green); background: #eef4f1; border-color: #b0ccbf; }
+.tt.a  { color: var(--amber); background: #f9f3e8; border-color: #d4bc8a; }
+.tt.r  { color: var(--red);   background: #f9eaea; border-color: #d4a0a0; }
+.tt.p  { color: var(--purple);background: #f3eef9; border-color: #c0a8d4; }
+
+.layer-chevron-wrap {
+  width: 36px; flex-shrink: 0; display: flex;
+  align-items: center; justify-content: center;
+}
+.chevron {
+  width: 12px; height: 12px; color: var(--muted2);
+  transition: transform .2s; flex-shrink: 0;
+}
+.layer.open .chevron { transform: rotate(180deg); }
+
+/* ── Body ── */
+.layer-body {
+  display: none; border-top: 1px solid var(--border); background: var(--surface);
+}
+.layer.open .layer-body { display: block; }
+
+.body-inner { padding: 14px 16px 14px 52px; }
+
+/* ── Content primitives ── */
+.body-inner h3 {
+  font-family: var(--mono); font-size: 8px; font-weight: 500;
+  letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted);
+  margin: 14px 0 6px; border-bottom: 1px solid var(--border); padding-bottom: 3px;
+}
+.body-inner h3:first-child { margin-top: 0; }
+
+.body-inner p { font-size: 12px; color: var(--ink2); line-height: 1.6; margin-bottom: 6px; }
+
+.kv { display: flex; gap: 10px; margin: 2px 0; font-size: 11.5px; }
+.kv-k { color: var(--accent); min-width: 120px; flex-shrink: 0; font-weight: 500; font-family: var(--sans); }
+.kv-v { color: var(--ink2); }
+
+.steps { display: flex; flex-direction: column; gap: 2px; margin: 6px 0; }
+.step {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 5px 10px; background: var(--surface2);
+  border: 1px solid var(--border);
+}
+.step-n { font-family: var(--mono); font-size: 9px; color: var(--accent); font-weight: 500; padding-top: 1px; width: 14px; flex-shrink: 0; }
+.step-t { font-size: 11.5px; color: var(--ink); line-height: 1.5; }
+.step-t .d { color: var(--muted); }
+
+.quote {
+  border-left: 2px solid var(--green); padding: 7px 12px;
+  background: #eef4f1; margin: 8px 0;
+  font-size: 11.5px; color: var(--ink); font-family: var(--display); font-style: italic;
+}
+.quote.a { border-left-color: var(--amber); background: #f9f4ec; }
+.quote.b { border-left-color: var(--accent); background: #eef3f9; }
+.quote.p { border-left-color: var(--purple); background: #f4f0f9; }
+.quote.r { border-left-color: var(--red); background: #f9eeee; }
+
+.warn {
+  background: #f9eeee; border: 1px solid #d4a0a0;
+  padding: 7px 10px; font-size: 11px; color: var(--red); margin: 6px 0;
+}
+
+.tbl { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 11px; }
+.tbl th {
+  text-align: left; font-family: var(--mono); font-size: 8px; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--muted); padding: 5px 10px;
+  border-bottom: 1px solid var(--border2); font-weight: 400; background: var(--surface2);
+}
+.tbl td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--ink2); }
+.tbl td:first-child { color: var(--accent); font-weight: 500; }
+.tbl td.g { color: var(--green); font-family: var(--mono); }
+.tbl tr:last-child td { border-bottom: none; }
+
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0; }
+@media (max-width: 640px) {
+  .two { grid-template-columns: 1fr; }
+  .body-inner { padding: 12px; }
+  .layer-tech { display: none; }
+}
+.col {
+  background: var(--surface2); border: 1px solid var(--border); padding: 10px 12px;
+}
+.col-lbl { font-family: var(--mono); font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
+.col ul { list-style: none; }
+.col ul li {
+  font-size: 11px; color: var(--ink2); padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 6px;
+}
+.col ul li::before { content: '–'; color: var(--muted2); flex-shrink: 0; }
+.col ul li:last-child { border-bottom: none; }
+
+hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+code {
+  font-family: var(--mono); font-size: 10px; color: var(--amber);
+  background: #f9f3e8; padding: 1px 4px; border: 1px solid #d4bc8a;
+}
+
+/* num colors per layer — muted, ink-based */
+.n1 { background: #2a4a6b; }
+.n2 { background: #276348; }
+.n3 { background: #4a3070; }
+.n4 { background: #6b4a18; }
+.n5 { background: #6b2e18; }
+.n6 { background: #1e4060; }
+.n7 { background: #3a2060; }
+.n8 { background: #1e5040; }
+.n9 { background: #6b2020; }
+
+/* footer */
+.footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border2); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+.footer span { font-family: var(--mono); font-size: 9px; color: var(--muted2); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="hdr">
+  <div class="hdr-eyebrow">FDE Integration Architecture · Interview Playbook</div>
+  <h1>System Design <em>Cheatsheet</em></h1>
+  <p class="hdr-sub">9 layers · click any row to expand · interview depth + HA/5-nines detail inline</p>
+</div>
+
+<!-- Universal answer bar -->
+<div class="universal">
+  <span class="universal-label">Answer flow →</span>
+  <span class="step-pill"><span>1</span> Clarify</span>
+  <span class="step-pill"><span>2</span> Assumptions</span>
+  <span class="step-pill"><span>3</span> Architecture</span>
+  <span class="step-pill"><span>4</span> Consistency</span>
+  <span class="step-pill"><span>5</span> Failure modes</span>
+  <span class="step-pill"><span>6</span> Observability</span>
+  <span class="step-pill"><span>7</span> Security</span>
+  <span class="step-pill"><span>8</span> Trade-offs</span>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LAYER 1 — SOURCE SYSTEM -->
+<!-- ══════════════════════════════════════════ -->
+<div class="layer" id="l1">
+  <button class="layer-trigger" onclick="toggle('l1')">
+    <span class="layer-num n1">01</span>
+    <div class="layer-meta">
+      <span class="layer-name">Source System</span>
+      <span class="layer-purpose">Where data originates</span>
+    </div>
+    <div class="layer-tech">
+      <div class="tech-tags">
+        <span class="tt">Legacy DB</span><span class="tt">COBOL core</span>
+        <span class="tt">REST APIs</span><span class="tt">Batch files</span>
+      </div>
+    </div>
+    <div class="layer-chevron-wrap"><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+  </button>
+  <div class="layer-body"><div class="body-inner">
+    <h3>Discovery — ask these before designing anything</h3>
+    <div class="steps">
+      <div class="step"><span class="step-n">?</span><span class="step-t">Core system type — mainframe COBOL, vendor package, homegrown?</span></div>
+      <div class="step"><span class="step-n">?</span><span class="step-t">Is there a DB2 layer, or pure VSAM flat files?</span></div>
+      <div class="step"><span class="step-n">?</span><span class="step-t">Batch vs real-time — extract cadence daily, hourly, event-triggered?</span></div>
+      <div class="step"><span class="step-n">?</span><span class="step-t">Is MQ already in use for anything?</span></div>
+      <div class="step"><span class="step-n">?</span><span class="step-t">What's the record format — EBCDIC or ASCII?</span></div>
+      <div class="step"><span class="step-n">?</span><span class="step-t">Do you have the copybooks? <span class="d">— if not, you have no schema</span></span></div>
+      <div class="step"><span class="step-n">?</span><span class="step-t">Data residency / regulatory constraints?</span></div>
+    </div>
+    <div class="quote a">Signal: don't design until you've asked. "Before I propose anything, can I ask a few questions about the source?" — this alone signals seniority.</div>
+    <hr>
+    <h3>If it's COBOL / mainframe</h3>
+    <p>COBOL runs on IBM mainframes (z/OS). It processes transactions in batch jobs — large files of records on a schedule, not continuously. Data lives in flat files or VSAM, not relational databases. There is no native REST API and no Kafka producer. Data gets out via file extracts, MQ message queues, or DB2 CDC if a DB2 layer exists.</p>
+    <div class="kv"><span class="kv-k">Egress options</span><span class="kv-v">Scheduled file extract, MQ polling, or DB2 CDC via Debezium — real-time CDC only possible if DB2 is in the picture</span></div>
+    <div class="kv"><span class="kv-k">Batch rhythm</span><span class="kv-v">Pipeline inherits the batch cadence — you're often getting 50k records at 2am, not 50k TPS in real time</span></div>
+    <hr>
+    <h3>COBOL gotchas — these will impress interviewers</h3>
+    <div class="kv"><span class="kv-k">EBCDIC encoding</span><span class="kv-v">Mainframes don't use ASCII/UTF-8. Raw ingest without conversion produces silent garbage. Normalization layer must handle this.</span></div>
+    <div class="kv"><span class="kv-k">Packed decimal</span><span class="kv-v">COMP-3 format — <code>PIC 9(7)V99 COMP-3</code> is not a string or integer, it's compressed binary. Needs a decoder or you get data quality bugs.</span></div>
+    <div class="kv"><span class="kv-k">Fixed-width records</span><span class="kv-v">No delimiters. Field X starts at byte 142, is 8 bytes wide — because the copybook says so. No copybook = no schema.</span></div>
+    <div class="kv"><span class="kv-k">Batch window risk</span><span class="kv-v">If the overnight job fails or runs long, your entire downstream is stale. Design for late data explicitly — don't assume the extract arrives on time.</span></div>
+    <hr>
+    <h3>The one-liner</h3>
+    <div class="quote b">"COBOL cores typically don't support real-time egress natively, so the integration pattern shifts from CDC to scheduled extract or MQ polling. Key risks are EBCDIC encoding, packed decimal fields, and batch window dependencies — all absorbed in the normalization layer before anything downstream sees the data."</div>
+    <hr>
+    <h3>Tier 1 reality — middleware is almost always already there</h3>
+    <p>Most large banks have already wrapped their COBOL core in middleware. You're rarely integrating directly with the file system — you're integrating with whatever the mainframe team has already exposed.</p>
+    <div class="kv"><span class="kv-k">IBM MQ</span><span class="kv-v">Most common. If it's there, lead with a Kafka Connect MQ source connector — mainframe team changes nothing, you get durable ordered messages from day one.</span></div>
+    <div class="kv"><span class="kv-k">DB2</span><span class="kv-v">Often the hidden gem. Many COBOL shops write transaction results to DB2 for reporting. If DB2 exists, Debezium has a connector — near real-time CDC without any mainframe-side changes.</span></div>
+    <div class="kv"><span class="kv-k">CICS</span><span class="kv-v">The online transaction layer — handles real-time COBOL transactions. CICS-to-MQ bridges are common. Knowing this word signals genuine familiarity.</span></div>
+    <div class="kv"><span class="kv-k">ESB</span><span class="kv-v">Many banks built a custom enterprise service bus in the 2000s. Everyone hates it, nobody has replaced it. Treat it like MQ — tap it, don't fight it.</span></div>
+    <hr>
+    <h3>Tricks of the trade</h3>
+    <div class="steps">
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Always land files in object storage first</strong> — never process in place. S3/GCS as the landing zone before any parsing begins.</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Validate the trailer record</strong> — COBOL extracts almost always end with a control record containing row counts and totals. Check it before processing a single row. Mismatch = reject the whole file.</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Version your copybook parser</strong> — mainframe teams add fields by appending to the end of the record, making it longer. Your parser needs to handle variable record lengths and you need a layout versioning strategy.</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Design for late data</strong> — batch windows slip. Don't assume the extract arrives on schedule. Your pipeline needs a late-arrival handling path, not just a happy path.</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Ask for DB2 before anything else</strong> — "Does your COBOL system write to DB2 anywhere in the flow?" is the single best question you can ask. If yes, your entire ingestion strategy changes.</span></div>
+    </div>
+    <hr>
+    <h3>The political trick</h3>
+    <div class="quote p">The mainframe team has their own release cadence, their own change board, and deep skepticism of "the cloud people." Every ask that requires a mainframe-side change will take 6 months minimum. Design your integration to need nothing from them — "we just want to read your MQ queue" beats "can you emit Kafka events" every time.</div>
+    <h3>If MQ is confirmed — say this</h3>
+    <div class="quote b">"In that case I'd lead with a Kafka Connect MQ source connector — keeps the mainframe team completely out of scope and we get durable, replayable messages from day one."</div>
+    <h3>Exec translation</h3>
+    <div class="kv"><span class="kv-k">"Legacy core"</span><span class="kv-v">"We're reading from the system of record without touching it — non-invasive, zero risk to the source."</span></div>
+    <h3>HA consideration</h3>
+    <p>You don't control source HA — so design for source unavailability. Your ingestion layer must buffer and resume. Never make your pipeline dependent on source uptime.</p>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LAYER 2 — INGESTION -->
+<!-- ══════════════════════════════════════════ -->
+<div class="layer" id="l2">
+  <button class="layer-trigger" onclick="toggle('l2')">
+    <span class="layer-num n2">02</span>
+    <div class="layer-meta">
+      <span class="layer-name">Ingestion</span>
+      <span class="layer-purpose">Bring data into platform safely</span>
+    </div>
+    <div class="layer-tech">
+      <div class="tech-tags">
+        <span class="tt hi">Debezium</span><span class="tt">Webhooks</span>
+        <span class="tt">Batch loaders</span><span class="tt hi">Kafka producers</span>
+      </div>
+    </div>
+    <div class="layer-chevron-wrap"><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+  </button>
+  <div class="layer-body"><div class="body-inner">
+    <h3>Key properties to name</h3>
+    <div class="kv"><span class="kv-k">Durability</span><span class="kv-v">Events must survive producer restarts — <code>acks=all</code>, idempotent producer</span></div>
+    <div class="kv"><span class="kv-k">Buffering</span><span class="kv-v">Ingestion decoupled from downstream — source outage doesn't lose data</span></div>
+    <div class="kv"><span class="kv-k">Replay</span><span class="kv-v">Log-based CDC (Debezium) gives you the database changelog — you can replay from any offset</span></div>
+    <div class="kv"><span class="kv-k">Non-invasive</span><span class="kv-v">Debezium reads transaction log — no triggers, no schema changes on source</span></div>
+    <hr>
+    <h3>HA / 5-nines at this layer</h3>
+    <div class="steps">
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Debezium connector in distributed mode — multiple workers, auto-rebalance on failure</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Kafka producer with <code>acks=all</code> + <code>min.insync.replicas=2</code> — no silent loss</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Source outage → connector pauses, resumes from last committed offset on recovery</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Snapshot catch-up path for cold start or long outage — reconcile from snapshot then resume CDC</span></div>
+    </div>
+    <div class="quote">Failure story hook: "We had a CDC outage that lasted 18 minutes. Because we'd designed for replay, we resumed from the committed offset and caught up in under 4 minutes with no data loss."</div>
+    <h3>Interview signal</h3>
+    <p>Mentioning <strong>log-based CDC vs query-based polling</strong> immediately shows depth. Query-based misses deletes and has higher source load. Log-based is the right choice for financial systems.</p>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LAYER 3 — EVENT BUS -->
+<!-- ══════════════════════════════════════════ -->
+<div class="layer" id="l3">
+  <button class="layer-trigger" onclick="toggle('l3')">
+    <span class="layer-num n3">03</span>
+    <div class="layer-meta">
+      <span class="layer-name">Event Bus</span>
+      <span class="layer-purpose">Decouple ingestion from processing</span>
+    </div>
+    <div class="layer-tech">
+      <div class="tech-tags">
+        <span class="tt hi">Kafka</span><span class="tt">Pulsar</span>
+        <span class="tt">Kinesis</span><span class="tt">Pub/Sub</span>
+      </div>
+    </div>
+    <div class="layer-chevron-wrap"><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+  </button>
+  <div class="layer-body"><div class="body-inner">
+    <h3>What to say about Kafka cold</h3>
+    <div class="kv"><span class="kv-k">Partition key</span><span class="kv-v">Always <code>account_id</code> for financial — strong per-account ordering, no cross-account dependency</span></div>
+    <div class="kv"><span class="kv-k">Replication factor</span><span class="kv-v">RF=3 minimum, <code>min.insync.replicas=2</code> — single broker loss is invisible to producers</span></div>
+    <div class="kv"><span class="kv-k">Idempotent producers</span><span class="kv-v"><code>enable.idempotence=true</code> — prevents duplicates on retry, essential for exactly-once semantics</span></div>
+    <div class="kv"><span class="kv-k">Log compaction</span><span class="kv-v">For state topics (latest value per key). Retention for audit topics (all events). Don't conflate them.</span></div>
+    <div class="kv"><span class="kv-k">Consumer groups</span><span class="kv-v">Static membership for latency-sensitive paths — avoids unnecessary rebalances on rolling restart</span></div>
+    <hr>
+    <h3>HA / 5-nines Kafka topology</h3>
+    <div class="steps">
+      <div class="step"><span class="step-n">✓</span><span class="step-t">3+ brokers across 3 AZs — rack-aware partition assignment so each replica is in a different AZ</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Controller quorum (KRaft mode) — eliminates ZooKeeper as a separate failure domain</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Cross-region topic replication via MirrorMaker 2 — active-active multi-region with consumer offset sync</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Per-partition lag SLI — aggregate lag hides hot partitions. Alert per partition.</span></div>
+    </div>
+    <div class="quote a">Hot partition story: "We had a hot partition because we were keying by transaction type instead of account. One type dominated. We repartitioned by account_id and the lag SLI flattened immediately. Added the per-partition alert so it can't hide again."</div>
+    <h3>Pushback: "Why not Kinesis?"</h3>
+    <p>Kinesis is valid if ops simplicity and AWS-native tooling matter more. Kafka wins on replay semantics, partition control, and ecosystem (Flink, ksqlDB). For a regulated financial system needing deterministic replay, Kafka is the right call.</p>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LAYER 4 — NORMALIZATION -->
+<!-- ══════════════════════════════════════════ -->
+<div class="layer" id="l4">
+  <button class="layer-trigger" onclick="toggle('l4')">
+    <span class="layer-num n4">04</span>
+    <div class="layer-meta">
+      <span class="layer-name">Normalization</span>
+      <span class="layer-purpose">Standardize incoming data</span>
+    </div>
+    <div class="layer-tech">
+      <div class="tech-tags">
+        <span class="tt hi">Schema registry</span><span class="tt">Validation service</span>
+        <span class="tt">Transform workers</span>
+      </div>
+    </div>
+    <div class="layer-chevron-wrap"><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+  </button>
+  <div class="layer-body"><div class="body-inner">
+    <h3>What canonical schema gives you</h3>
+    <p>Every downstream system speaks one language regardless of source. Schema drift in the source doesn't break consumers — the normalization layer absorbs it.</p>
+    <div class="kv"><span class="kv-k">Schema registry</span><span class="kv-v">Confluent Schema Registry — Avro/Protobuf schemas versioned and enforced at produce time</span></div>
+    <div class="kv"><span class="kv-k">Compatibility mode</span><span class="kv-v"><code>BACKWARD</code> — new consumers can read old messages, old consumers can read new messages</span></div>
+    <div class="kv"><span class="kv-k">Validation</span><span class="kv-v">Invalid events → DLQ immediately, never silently dropped</span></div>
+    <hr>
+    <h3>Canonical ledger event model</h3>
+    <div class="tech-tags" style="margin:8px 0; gap:6px;">
+      <span class="tt hi">transaction_id</span>
+      <span class="tt hi">account_id</span>
+      <span class="tt hi">amount</span>
+      <span class="tt hi">timestamp</span>
+      <span class="tt hi">previous_event_hash</span>
+      <span class="tt hi">source_system</span>
+    </div>
+    <div class="quote"><code>previous_event_hash</code> chains events — deterministic replay from T=0 always produces the same balance. This is your audit guarantee.</div>
+    <h3>HA / 5-nines risk here</h3>
+    <div class="warn">Schema registry is a critical dependency. If it's unavailable, producers can't validate schemas and may back-pressure. Run it in cluster mode (3 nodes) and treat it like a control plane component, not an application.</div>
+    <h3>Interview signal</h3>
+    <p>Mentioning <strong>schema evolution strategy</strong> (backward/forward compatibility) distinguishes you from candidates who treat schemas as a one-time decision.</p>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LAYER 5 — PROCESSING -->
+<!-- ══════════════════════════════════════════ -->
+<div class="layer" id="l5">
+  <button class="layer-trigger" onclick="toggle('l5')">
+    <span class="layer-num n5">05</span>
+    <div class="layer-meta">
+      <span class="layer-name">Processing / Decisions</span>
+      <span class="layer-purpose">Apply business logic</span>
+    </div>
+    <div class="layer-tech">
+      <div class="tech-tags">
+        <span class="tt">Stateless microservices</span>
+        <span class="tt hi">Flink</span><span class="tt hi">Spark</span>
+        <span class="tt">Rules engines</span>
+      </div>
+    </div>
+    <div class="layer-chevron-wrap"><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+  </button>
+  <div class="layer-body"><div class="body-inner">
+    <h3>The two laws</h3>
+    <div class="quote a">"Idempotent processing — the same event processed twice produces the same result."</div>
+    <div class="quote a">"Deterministic logic — given the same input at any time, the output is identical."</div>
+    <h3>Distributed system pillars — must cover all five</h3>
+    <div class="kv"><span class="kv-k">Partitioning</span><span class="kv-v">Per-account via partition key — strong ordering within account, scale across accounts</span></div>
+    <div class="kv"><span class="kv-k">Idempotency</span><span class="kv-v">Dedupe store keyed on <code>transaction_hash</code> — exact-once effect even with at-least-once delivery</span></div>
+    <div class="kv"><span class="kv-k">Backpressure</span><span class="kv-v">Bound consumer concurrency — reject early rather than collapse under burst traffic</span></div>
+    <div class="kv"><span class="kv-k">Consistency model</span><span class="kv-v">Strong within account, eventual across — higher throughput, acceptable trade-off for this use case</span></div>
+    <div class="kv"><span class="kv-k">Failure handling</span><span class="kv-v">DLQ for poison events, circuit breaker on downstream write, retry with jitter</span></div>
+    <hr>
+    <h3>Concurrency patterns</h3>
+    <div class="kv"><span class="kv-k">Worker pools</span><span class="kv-v">Fixed size — unbounded goroutines/threads will OOM under burst</span></div>
+    <div class="kv"><span class="kv-k">Circuit breakers</span><span class="kv-v">Open on error threshold — fast-fail prevents cascade to storage layer</span></div>
+    <div class="kv"><span class="kv-k">Retry with jitter</span><span class="kv-v">Exponential backoff + random jitter — avoids thundering herd on recovery</span></div>
+    <hr>
+    <h3>AI augmentation — right here, not in the critical path</h3>
+    <p>LLMs belong as a sidecar to processing decisions, not in the hot path. Anomaly detection, RCA assistance, log classification — all async, all advisory.</p>
+    <div class="two">
+      <div class="col">
+        <div class="col-lbl" style="color:var(--green)">Strong AI-native workflow</div>
+        <ul>
+          <li>LLM generates failure modes → converted to tests</li>
+          <li>LLM critiques design as "Google SRE"</li>
+          <li>LLM produces runbooks from SLOs</li>
+          <li>Human validates via load + property tests</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="col-lbl" style="color:var(--red)">Weak</div>
+        <ul>
+          <li>Autocomplete only</li>
+          <li>AI in the write path</li>
+          <li>No human validation gate</li>
+          <li>LLM makes commit decisions</li>
+        </ul>
+      </div>
+    </div>
+    <div class="quote p">"Intelligence never grants authority." — AI assists, deterministic logic decides.</div>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LAYER 6 — STORAGE -->
+<!-- ══════════════════════════════════════════ -->
+<div class="layer" id="l6">
+  <button class="layer-trigger" onclick="toggle('l6')">
+    <span class="layer-num n6">06</span>
+    <div class="layer-meta">
+      <span class="layer-name">Storage</span>
+      <span class="layer-purpose">Persist final state</span>
+    </div>
+    <div class="layer-tech">
+      <div class="tech-tags">
+        <span class="tt hi">Postgres</span><span class="tt">OLAP store</span>
+        <span class="tt">Event store</span><span class="tt">Object storage</span>
+      </div>
+    </div>
+    <div class="layer-chevron-wrap"><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+  </button>
+  <div class="layer-body"><div class="body-inner">
+    <h3>Financial storage non-negotiables</h3>
+    <div class="kv"><span class="kv-k">Immutability</span><span class="kv-v">Append-only event store — never update, never delete. Corrections are new events.</span></div>
+    <div class="kv"><span class="kv-k">Upserts</span><span class="kv-v">Idempotent writes keyed on <code>transaction_id</code> — safe to replay without duplicating records</span></div>
+    <div class="kv"><span class="kv-k">Replay safety</span><span class="kv-v">"If we replay all events from T=0, do we get the same balance?" — if not, it's not an audit log</span></div>
+    <div class="kv"><span class="kv-k">CQRS</span><span class="kv-v">Separate write model (event store) from read model (materialized balance views) — read performance doesn't compromise write integrity</span></div>
+    <hr>
+    <h3>HA / 5-nines for storage</h3>
+    <div class="steps">
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Postgres HA</strong> — primary + 2 standbys across AZs, synchronous replication to at least one standby</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Patroni / pgEdge / RDS Multi-AZ</strong> — automated failover, no manual promotion required</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Point-in-time recovery</strong> — WAL shipping to object storage, cross-region replicated. RPO ≈ 0.</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Connection pooling</strong> (PgBouncer) — storms on failover don't exhaust connection limits</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t"><strong>Multi-region DR</strong> — home-region writer, cross-region read replica promoted on failover</span></div>
+    </div>
+    <div class="quote">5-nines for storage requires the failover to be automatic and tested. "We do a monthly failover drill in staging and measure actual RTO. Last test: 47 seconds."</div>
+    <h3>Active-Active DR — exec translation</h3>
+    <div class="kv"><span class="kv-k">Technical</span><span class="kv-v">Single-writer per account (home region), cross-region replication, reroute on failure</span></div>
+    <div class="kv"><span class="kv-k">Exec</span><span class="kv-v">"No downtime if a data center fails — traffic automatically shifts, data is already there."</span></div>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LAYER 7 — INTERFACES -->
+<!-- ══════════════════════════════════════════ -->
+<div class="layer" id="l7">
+  <button class="layer-trigger" onclick="toggle('l7')">
+    <span class="layer-num n7">07</span>
+    <div class="layer-meta">
+      <span class="layer-name">Interfaces</span>
+      <span class="layer-purpose">Expose outputs to users / systems</span>
+    </div>
+    <div class="layer-tech">
+      <div class="tech-tags">
+        <span class="tt">APIs</span><span class="tt">Dashboards</span>
+        <span class="tt">Alert systems</span><span class="tt">Automation</span>
+      </div>
+    </div>
+    <div class="layer-chevron-wrap"><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+  </button>
+  <div class="layer-body"><div class="body-inner">
+    <h3>Design principle</h3>
+    <p>Consumers should subscribe to events or query materialized views — never query the event store directly. The interface layer is read-only against the write path.</p>
+    <div class="kv"><span class="kv-k">Event subscription</span><span class="kv-v">Downstream systems consume from Kafka topics — decoupled, no polling</span></div>
+    <div class="kv"><span class="kv-k">REST / GraphQL</span><span class="kv-v">Query materialized views, not live event log — read performance isolated from write path</span></div>
+    <div class="kv"><span class="kv-k">Webhooks / alerts</span><span class="kv-v">Push model for operational events — reconciliation mismatches, lag threshold breaches</span></div>
+    <hr>
+    <h3>Cutover strategy — this layer is your migration gate</h3>
+    <div class="steps">
+      <div class="step"><span class="step-n">1</span><span class="step-t"><strong>Mirror-only validation</strong> — no reads shifted, reconciliation running silently</span></div>
+      <div class="step"><span class="step-n">2</span><span class="step-t"><strong>Reconciliation parity</strong> — confirm 48–72h of hash match before moving traffic</span></div>
+      <div class="step"><span class="step-n">3</span><span class="step-t"><strong>Shadow posting</strong> — writes to both systems, source remains truth</span></div>
+      <div class="step"><span class="step-n">4</span><span class="step-t"><strong>Gradual read shift</strong> — by product line, with instant rollback gate per line</span></div>
+      <div class="step"><span class="step-n">5</span><span class="step-t"><strong>Write migration</strong> — per product line, never big-bang</span></div>
+    </div>
+    <div class="quote b">Exec translation: "We never flip a switch. Each product line migrates independently. If anything looks wrong, we roll back that line in 30 seconds."</div>
+    <h3>High-signal questions to ask them here</h3>
+    <div class="steps">
+      <div class="step"><span class="step-n">→</span><span class="step-t">"What's the biggest integration pain you haven't had time to fix?" <span class="d">— this tells you what you'd own on day 30</span></span></div>
+      <div class="step"><span class="step-n">→</span><span class="step-t">"How do downstream consumers handle your outages today?"</span></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LAYER 8 — OBSERVABILITY -->
+<!-- ══════════════════════════════════════════ -->
+<div class="layer" id="l8">
+  <button class="layer-trigger" onclick="toggle('l8')">
+    <span class="layer-num n8">08</span>
+    <div class="layer-meta">
+      <span class="layer-name">Observability</span>
+      <span class="layer-purpose">Monitor system health</span>
+    </div>
+    <div class="layer-tech">
+      <div class="tech-tags">
+        <span class="tt hi">Prometheus</span><span class="tt hi">OpenTelemetry</span>
+        <span class="tt hi">Grafana</span><span class="tt">Logging</span>
+      </div>
+    </div>
+    <div class="layer-chevron-wrap"><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+  </button>
+  <div class="layer-body"><div class="body-inner">
+    <h3>Say these exactly</h3>
+    <div class="quote">"Design SLOs first, alerts from error budget burn."</div>
+    <div class="quote">"Lag is the leading indicator in event systems."</div>
+    <div class="quote">"Reconciliation is the safety net for financial correctness."</div>
+    <hr>
+    <h3>SLI hierarchy for financial systems</h3>
+    <table class="tbl">
+      <tr><th>Priority</th><th>SLI</th><th>Target</th><th>Why</th></tr>
+      <tr><td>P0</td><td>Reconciliation mismatch rate</td><td class="g">0 / 24h</td><td>Data correctness — zero tolerance</td></tr>
+      <tr><td>P0</td><td>Write success rate</td><td class="g">99.99%</td><td>Transactions must land</td></tr>
+      <tr><td>P1</td><td>Consumer lag</td><td class="g">&lt; 5s sustained</td><td>Leading indicator of saturation</td></tr>
+      <tr><td>P1</td><td>End-to-end latency</td><td class="g">&lt; 2s p99</td><td>CDC event → write confirmed</td></tr>
+      <tr><td>P2</td><td>Ingestion latency</td><td class="g">&lt; 200ms p99</td><td>Upstream health signal</td></tr>
+    </table>
+    <h3>5-nines observability stack</h3>
+    <div class="kv"><span class="kv-k">Metrics</span><span class="kv-v">Prometheus with remote write — never lose metrics during the outage you're trying to debug</span></div>
+    <div class="kv"><span class="kv-k">Tracing</span><span class="kv-v">OpenTelemetry SDK — trace from CDC event through normalization, processing, to write confirmation</span></div>
+    <div class="kv"><span class="kv-k">Alerting</span><span class="kv-v">Multiwindow burn rate — 1h + 6h window. A spike looks different than sustained degradation. Only burn rate captures both.</span></div>
+    <div class="kv"><span class="kv-k">Dashboards</span><span class="kv-v">Grafana SLO burn rate is the primary on-call view — not raw metrics, not counts</span></div>
+    <div class="kv"><span class="kv-k">Logging</span><span class="kv-v">Structured JSON only — queryable in seconds, not grep'd in minutes</span></div>
+    <hr>
+    <h3>Production incident pattern — model story</h3>
+    <div class="kv"><span class="kv-k">Detection</span><span class="kv-v">Pager alert on SLO burn for write latency</span></div>
+    <div class="kv"><span class="kv-k">Impact</span><span class="kv-v">30% of transactions delayed for 6 minutes</span></div>
+    <div class="kv"><span class="kv-k">Action</span><span class="kv-v">Traffic shed → rollback → replay from Kafka</span></div>
+    <div class="kv"><span class="kv-k">Root cause</span><span class="kv-v">Hot partition due to poor key choice</span></div>
+    <div class="kv"><span class="kv-k">Prevention</span><span class="kv-v">Repartitioned by <code>account_id</code>, added per-partition lag SLI + alert</span></div>
+    <div class="quote a">This story shows: metrics-driven detection, structured response, root cause analysis, and prevention. Own every step.</div>
+    <h3>High-signal question to ask them</h3>
+    <div class="step" style="margin-top:8px"><span class="step-n">→</span><span class="step-t">"What are your current SLO targets and how are you tracking against error budget today?"</span></div>
+  </div></div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LAYER 9 — AI AUGMENTATION -->
+<!-- ══════════════════════════════════════════ -->
+<div class="layer" id="l9">
+  <button class="layer-trigger" onclick="toggle('l9')">
+    <span class="layer-num n9">09</span>
+    <div class="layer-meta">
+      <span class="layer-name">AI Augmentation</span>
+      <span class="layer-purpose">Assist operations, not control path</span>
+    </div>
+    <div class="layer-tech">
+      <div class="tech-tags">
+        <span class="tt p">LLMs for RCA</span><span class="tt">Anomaly detection</span>
+        <span class="tt">Log classification</span>
+      </div>
+    </div>
+    <div class="layer-chevron-wrap"><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+  </button>
+  <div class="layer-body"><div class="body-inner">
+    <h3>The rule</h3>
+    <div class="quote r">"Keep AI outside the critical path. Deterministic systems decide. AI assists."</div>
+    <h3>Where AI belongs in this architecture</h3>
+    <div class="kv"><span class="kv-k">RCA assistance</span><span class="kv-v">LLM correlates lag spike, error rate, and deployment timeline — surfaces likely cause in seconds</span></div>
+    <div class="kv"><span class="kv-k">Anomaly detection</span><span class="kv-v">ML model flags unusual transaction patterns — sends to human review queue, doesn't block</span></div>
+    <div class="kv"><span class="kv-k">Log classification</span><span class="kv-v">LLM triages noisy logs into signal — reduces MTTR by reducing cognitive load on-call</span></div>
+    <div class="kv"><span class="kv-k">Runbook generation</span><span class="kv-v">LLM produces runbooks from SLO definitions and past incident data — human reviews before publishing</span></div>
+    <hr>
+    <h3>AI-native daily workflow — what "strong" looks like</h3>
+    <div class="steps">
+      <div class="step"><span class="step-n">1</span><span class="step-t">LLM generates architecture design options given constraints</span></div>
+      <div class="step"><span class="step-n">2</span><span class="step-t">LLM critiques the design from the perspective of "adversarial SRE"</span></div>
+      <div class="step"><span class="step-n">3</span><span class="step-t">Failure modes generated → converted directly into test cases</span></div>
+      <div class="step"><span class="step-n">4</span><span class="step-t">Runbooks generated from SLOs — human validates, not rubber-stamps</span></div>
+      <div class="step"><span class="step-n">5</span><span class="step-t">Load tests + property-based tests provide final gate, not the LLM</span></div>
+    </div>
+    <div class="quote p">"Weak is autocomplete. Strong is using AI to find the holes in your own design before production finds them for you."</div>
+    <h3>High-signal question to ask them</h3>
+    <div class="step" style="margin-top:8px"><span class="step-n">→</span><span class="step-t">"Where is AI actually in your incident response flow today — not planned, actually in use?"</span></div>
+    <hr>
+    <h3>Readiness checklist — close with this</h3>
+    <div class="steps">
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Walk a production incident end-to-end with metrics and prevention — without notes</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Design the digital twin architecture in 10 minutes on a whiteboard</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Explain active-active DR, state RPO/RTO, and justify vs active-passive</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Describe GitOps zero-to-running recovery in under 2 minutes</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Show concrete AI-native daily workflow — not aspirational</span></div>
+      <div class="step"><span class="step-n">✓</span><span class="step-t">Translate any technical decision to business impact in one sentence</span></div>
+    </div>
+    <div class="quote" style="margin-top:16px">If any of these cause hesitation, that's your prep target. Everything else is polish.</div>
+  </div></div>
+</div>
+
+<div class="footer">
+  <span>FDE Integration Architecture · Interview Playbook</span>
+  <span>9 layers · click to expand</span>
+</div>
+
+</div>
+<script>
+function toggle(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+</script>
+</body>
+</html>
